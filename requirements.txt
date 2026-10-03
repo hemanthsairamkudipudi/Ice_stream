@@ -1,2 +1,4 @@
 pytest>=8.0,<10.0
 confluent-kafka>=2.8,<3.0
+pyiceberg[s3fs,pyarrow]>=0.12,<0.13
+pytz>=2025.1
