@@ -35,3 +35,5 @@ htmlcov/
 # Temporary files
 tmp/
 temp/
+# Runtime remediation data
+data/
