@@ -22,7 +22,7 @@ def main() -> None:
     # 3. Run the remediation service
     service = RemediationService(
         error_rate_threshold=0.02,
-        dlq_path="data/dlq.jsonl",
+        use_iceberg_dlq=True,
     )
 
     result = service.process_batch(
@@ -57,9 +57,9 @@ def main() -> None:
     print(f"DLQ records: {len(entries)}")
 
     for entry in entries:
-        print(f" - {entry['record'].get('order_id')}")
-        print(f"   Status: {entry['status']}")
-        print(f"   Errors: {entry['errors']}")
+        print(f" - {entry.get('order_id')}")
+        print(f"   Status: {entry.get('status')}")
+        print(f"   Errors: {entry.get('errors')}")
 
 
 if __name__ == "__main__":
