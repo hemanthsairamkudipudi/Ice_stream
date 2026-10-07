@@ -2,7 +2,7 @@ services:
   flink-jobmanager:
     build:
       context: ./flink-iceberg
-    image: icestream-flink-iceberg:2.3-1.12.0
+    image: icestream-flink-iceberg:2.2-1.12.0
     container_name: icestream-flink-jobmanager
     ports:
       - "8081:8081"
@@ -23,7 +23,7 @@ services:
   flink-taskmanager:
     build:
       context: ./flink-iceberg
-    image: icestream-flink-iceberg:2.3-1.12.0
+    image: icestream-flink-iceberg:2.2-1.12.0
     container_name: icestream-flink-taskmanager
     depends_on:
       - flink-jobmanager
