@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   ReactFlow,
   Background,
@@ -170,7 +170,85 @@ function StatusCard({ title, value, status }) {
 function App() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+  const [remediationStatus, setRemediationStatus] = useState(null)
+  const [apiError, setApiError] = useState(null)
 
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const response = await fetch(
+          'http://127.0.0.1:8000/api/v1/remediation/status'
+        )
+
+        if (!response.ok) {
+          throw new Error(`API returned ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        setRemediationStatus(data)
+        setApiError(null)
+      } catch (error) {
+        setApiError(error.message)
+      }
+    }
+
+    fetchStatus()
+
+    const interval = setInterval(fetchStatus, 5000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+  if (!remediationStatus) {
+    return
+  }
+
+  const isOpen = remediationStatus.state === 'OPEN'
+
+  setNodes((currentNodes) =>
+    currentNodes.map((node) => {
+      if (node.id === 'quality') {
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            label: isOpen
+              ? 'Data Quality\nOPEN'
+              : 'Data Quality\nHEALTHY',
+          },
+          style: {
+            ...node.style,
+            border: isOpen
+              ? '2px solid #dc2626'
+              : '2px solid #16a34a',
+          },
+        }
+      }
+
+      if (node.id === 'observability') {
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            label: isOpen
+              ? 'Observability\nINCIDENT'
+              : 'Observability\nHEALTHY',
+          },
+          style: {
+            ...node.style,
+            border: isOpen
+              ? '2px solid #dc2626'
+              : '2px solid #16a34a',
+          },
+        }
+      }
+
+      return node
+    }),
+  )
+  }, [remediationStatus, setNodes])
   const onConnect = useCallback(
     (connection) => {
       setEdges((currentEdges) => addEdge(connection, currentEdges))
@@ -228,12 +306,33 @@ function App() {
             value="11 / 11"
             status="PASSED"
           />
-
           <StatusCard
-            title="Flink"
-            value="Not implemented"
-            status="PLANNED"
+            title="Remediation Circuit"
+            value={
+              remediationStatus
+                ? remediationStatus.state
+                : 'Loading...'
+            }
+            status={
+              remediationStatus
+                ? remediationStatus.state
+                : undefined
+            }
           />
+          <StatusCard
+            title="Data Quality"
+            value={
+              remediationStatus
+                ? `${remediationStatus.failed_records} failed / ${remediationStatus.total_records}`
+                : 'Loading...'
+            }
+            status={
+              remediationStatus
+                ? `${(remediationStatus.error_rate * 100).toFixed(1)}% ERROR`
+                : undefined
+            }
+          />
+          
         </div>
 
         <div className="legend">
