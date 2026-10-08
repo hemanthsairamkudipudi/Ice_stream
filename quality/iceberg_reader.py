@@ -26,3 +26,20 @@ def read_checkout_records() -> list[dict[str, Any]]:
     arrow_table = table.scan().to_arrow()
 
     return arrow_table.to_pylist()
+
+
+def read_checkout_records_at_snapshot(
+    snapshot_id: int,
+) -> list[dict[str, Any]]:
+    table = load_checkout_table()
+
+    snapshot = table.snapshot_by_id(snapshot_id)
+
+    if snapshot is None:
+        raise ValueError(f"Iceberg snapshot not found: {snapshot_id}")
+
+    arrow_table = table.scan(
+        snapshot_id=snapshot_id
+    ).to_arrow()
+
+    return arrow_table.to_pylist()
