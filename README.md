@@ -1,8 +1,3 @@
-Ah, I understand. 👍 You want the **entire README in one proper Markdown code block** so you can click **Copy** once and paste it directly into `README.md`.
-
-Here it is:
-
-```markdown
 # IceStream: Real-Time Lakehouse Observability
 
 > A production-style real-time data quality and observability platform for streaming e-commerce checkout telemetry.
@@ -1202,23 +1197,4 @@ Resume
 > Detect bad data before it breaks downstream analytics.
 ```
 
-### Easiest way to copy it
-
-Look at the **top-right corner of the large Markdown block** above. There should be a **Copy** button.
-
-Click **Copy**, then:
-
-1. Open `README.md` in VS Code.
-2. Press **Ctrl + A**.
-3. Press **Ctrl + V**.
-4. Press **Ctrl + S**.
-5. Press **Ctrl + Shift + V** to preview it.
-
-Then you can commit it:
-
-```powershell
-git add README.md
-git commit -m "docs: update IceStream README"
-git push origin main
-```
 
