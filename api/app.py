@@ -4,6 +4,7 @@ from api.status import RemediationStatus
 from quality.engine import DataQualityEngine
 from quality.iceberg_reader import read_checkout_records
 from remediation.remediation_service import RemediationService
+from remediation.incident_log import IncidentLog
 
 
 app = FastAPI(
@@ -70,3 +71,14 @@ def remediation_status() -> dict:
     )
 
     return response
+
+@app.get("/api/v1/incidents")
+def incident_history():
+    incident_log = IncidentLog()
+
+    incidents = incident_log.get_recent_incidents(limit=20)
+
+    return {
+        "count": len(incidents),
+        "incidents": incidents,
+    }

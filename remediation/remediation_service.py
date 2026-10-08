@@ -73,18 +73,23 @@ class RemediationService:
                 }
             )
 
-            incident = self.incident_log.record_incident(
-                state=state.value,
-                total_records=total_records,
-                failed_records=failed_records,
-                error_rate=failed_records / total_records,
-                threshold=self.circuit_breaker.error_rate_threshold,
-                quarantined_records=quarantined,
-                failure_reasons=failure_reasons,
-                action="CIRCUIT_OPENED + QUARANTINE",
-            )
-            self.active_incident_id = incident["incident_id"]
+            existing_incident = self.incident_log.get_active_incident()
 
+            if existing_incident is not None:
+                incident = existing_incident
+                self.active_incident_id = existing_incident["incident_id"]
+            else:
+                incident = self.incident_log.record_incident(
+                    state=state.value,
+                    total_records=total_records,
+                    failed_records=failed_records,
+                    error_rate=failed_records / total_records,
+                    threshold=self.circuit_breaker.error_rate_threshold,
+                    quarantined_records=quarantined,
+                    failure_reasons=failure_reasons,
+                    action="CIRCUIT_OPENED + QUARANTINE",
+                )
+                self.active_incident_id = incident["incident_id"]            
         return {
             "state": state.value,
             "total_records": total_records,

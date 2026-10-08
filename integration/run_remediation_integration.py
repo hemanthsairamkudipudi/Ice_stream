@@ -3,13 +3,10 @@ from quality.engine import DataQualityEngine
 from remediation.remediation_service import RemediationService
 
 
-def main() -> None:
-    # 1. Read real records from Iceberg
-    records = read_checkout_records()
-
-    print(f"Records read from Iceberg: {len(records)}")
-
-    # 2. Validate every record individually
+def validate_records(
+    records: list[dict],
+) -> dict[int, list[str]]:
+    """Validate every record and return errors by record index."""
     engine = DataQualityEngine()
     record_errors: dict[int, list[str]] = {}
 
@@ -19,7 +16,34 @@ def main() -> None:
         if errors:
             record_errors[index] = errors
 
-    # 3. Run the remediation service
+    return record_errors
+
+
+def main() -> None:
+    # ============================================================
+    # 1. Read real records from Iceberg
+    # ============================================================
+    records = read_checkout_records()
+
+    print(f"Records read from Iceberg: {len(records)}")
+
+    # ============================================================
+    # 2. Validate the real Iceberg data
+    # ============================================================
+    record_errors = validate_records(records)
+
+    print("\nInitial Quality Check")
+    print("---------------------")
+    print(f"Failed records: {len(record_errors)}")
+
+    for index, errors in record_errors.items():
+        print(f"Record {index}:")
+        for error in errors:
+            print(f"  - {error}")
+
+    # ============================================================
+    # 3. Run remediation on the real data
+    # ============================================================
     service = RemediationService(
         error_rate_threshold=0.02,
         use_iceberg_dlq=True,
@@ -30,7 +54,6 @@ def main() -> None:
         record_errors=record_errors,
     )
 
-    # 4. Display the result
     print("\nRemediation Result")
     print("------------------")
     print(f"Total records       : {result['total_records']}")
@@ -39,17 +62,87 @@ def main() -> None:
     print(f"Circuit state       : {result['state']}")
     print(f"Quarantined records : {result['quarantined_records']}")
 
-    # 5. Display the actual errors
-    if record_errors:
-        print("\nDetected Errors")
-        print("----------------")
+    # ============================================================
+    # 4. Display incident information
+    # ============================================================
+    incident = result.get("incident")
 
-        for index, errors in record_errors.items():
-            print(f"Record {index}:")
-            for error in errors:
-                print(f"  - {error}")
+    if incident:
+        print("\nIncident")
+        print("--------")
+        print(f"Incident ID : {incident['incident_id']}")
+        print(f"State       : {incident['state']}")
+        print(f"Action      : {incident['action']}")
 
-    # 6. Display DLQ contents
+    # ============================================================
+    # 5. Recovery simulation
+    #
+    # IMPORTANT:
+    # We do NOT modify the actual Iceberg table here.
+    #
+    # We simulate successful remediation by removing the detected
+    # validation errors from the in-memory validation result.
+    # ============================================================
+    print("\nRecovery Simulation")
+    print("-------------------")
+    print("Using corrected in-memory validation results.")
+    print("The Iceberg source table is NOT modified.")
+
+    recovered_record_errors: dict[int, list[str]] = {}
+
+    recovery_result = service.attempt_recovery(
+        records=records,
+        record_errors=recovered_record_errors,
+    )
+
+    print("\nRecovery Result")
+    print("---------------")
+    print(f"Recovery success : {recovery_result['recovery_success']}")
+    print(f"Failed records  : {recovery_result['failed_records']}")
+    print(f"Circuit state   : {recovery_result['state']}")
+
+    # ============================================================
+    # 6. Verify recovery
+    # ============================================================
+    if (
+        recovery_result["recovery_success"]
+        and recovery_result["state"] == "CLOSED"
+    ):
+        print("\nRecovery verification: PASSED")
+        print("Circuit transitioned OPEN -> HALF_OPEN -> CLOSED.")
+    else:
+        print("\nRecovery verification: FAILED")
+
+    # ============================================================
+    # 7. Verify incident resolution
+    # ============================================================
+    recent_incidents = service.incident_log.get_recent_incidents(limit=5)
+
+    print("\nIncident History")
+    print("----------------")
+
+    for entry in recent_incidents:
+        print(
+            f"{entry.get('incident_id')} | "
+            f"state={entry.get('state')} | "
+            f"resolved_at={entry.get('resolved_at')}"
+        )
+
+    active_incident = service.incident_log.get_active_incident()
+
+    if active_incident is None:
+        print("\nIncident resolution verification: PASSED")
+        print("No unresolved active incident remains.")
+    else:
+        print("\nIncident resolution verification: FAILED")
+        print(
+            f"Active incident remains: "
+            f"{active_incident.get('incident_id')}"
+        )
+
+    # ============================================================
+    # 8. Display DLQ contents
+    # ============================================================
     entries = service.dlq.read_all()
 
     print("\nDLQ Summary")

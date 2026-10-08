@@ -52,11 +52,11 @@ const initialNodes = [
     id: 'flink',
     position: { x: 550, y: 100 },
     data: {
-      label: 'Flink\nPLANNED',
+      label: 'Flink\nLIVE',
     },
     style: {
       background: '#ffffff',
-      border: '2px solid #f59e0b',
+      border: '2px solid #16a34a',
       borderRadius: '10px',
       padding: '15px',
       width: 190,
@@ -69,11 +69,11 @@ const initialNodes = [
     id: 'iceberg',
     position: { x: 800, y: 100 },
     data: {
-      label: 'Iceberg\nPLANNED',
+      label: 'Iceberg\nLIVE',
     },
     style: {
       background: '#ffffff',
-      border: '2px solid #f59e0b',
+      border: '2px solid #16a34a',
       borderRadius: '10px',
       padding: '15px',
       width: 190,
@@ -167,10 +167,142 @@ function StatusCard({ title, value, status }) {
   )
 }
 
+function IncidentCard({ incident }) {
+  if (!incident) {
+    return (
+      <div className="incident-card healthy">
+        <div className="incident-header">
+          <h3>Incident Log</h3>
+          <span className="incident-badge closed">NO ACTIVE INCIDENT</span>
+        </div>
+
+        <p className="incident-empty">
+          The remediation pipeline is currently healthy.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="incident-card">
+      <div className="incident-header">
+        <h3>Incident Log</h3>
+
+        <span
+          className={`incident-badge ${incident.state.toLowerCase()}`}
+        >
+          {incident.state}
+        </span>
+      </div>
+
+      <div className="incident-grid">
+        <div>
+          <span className="incident-label">Incident ID</span>
+          <strong>{incident.incident_id}</strong>
+        </div>
+
+        <div>
+          <span className="incident-label">Detected</span>
+          <strong>
+            {new Date(incident.detected_at).toLocaleString()}
+          </strong>
+        </div>
+
+        <div>
+          <span className="incident-label">Failed Records</span>
+          <strong>
+            {incident.failed_records} / {incident.total_records}
+          </strong>
+        </div>
+
+        <div>
+          <span className="incident-label">Error Rate</span>
+          <strong>
+            {(incident.error_rate * 100).toFixed(1)}%
+          </strong>
+        </div>
+
+        <div>
+          <span className="incident-label">Threshold</span>
+          <strong>
+            {(incident.threshold * 100).toFixed(1)}%
+          </strong>
+        </div>
+
+        <div>
+          <span className="incident-label">Quarantined</span>
+          <strong>{incident.quarantined_records}</strong>
+        </div>
+      </div>
+
+      <div className="incident-action">
+        <span className="incident-label">Action</span>
+        <strong>{incident.action}</strong>
+      </div>
+
+      {incident.failure_reasons?.length > 0 && (
+        <div className="incident-reasons">
+          <span className="incident-label">Failure Reasons</span>
+
+          <ul>
+            {incident.failure_reasons.map((reason, index) => (
+              <li key={`${reason}-${index}`}>{reason}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function IncidentHistory({ incidents }) {
+  return (
+    <div className="incident-history">
+      <div className="incident-header">
+        <h3>Incident History</h3>
+        <span className="incident-count">
+          {incidents.length} recorded
+        </span>
+      </div>
+
+      {incidents.length === 0 ? (
+        <p className="incident-empty">
+          No incidents have been recorded.
+        </p>
+      ) : (
+        <div className="incident-history-list">
+          {incidents.map((incident) => (
+            <div
+              className="incident-history-item"
+              key={incident.incident_id}
+            >
+              <div>
+                <strong>{incident.incident_id}</strong>
+                <span>
+                  {new Date(incident.detected_at).toLocaleString()}
+                </span>
+              </div>
+
+              <span
+                className={`incident-badge ${
+                  incident.state.toLowerCase()
+                }`}
+              >
+                {incident.state}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function App() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
   const [remediationStatus, setRemediationStatus] = useState(null)
+  const [incidentHistory, setIncidentHistory] = useState([])
   const [apiError, setApiError] = useState(null)
 
   useEffect(() => {
@@ -187,7 +319,18 @@ function App() {
         const data = await response.json()
 
         setRemediationStatus(data)
-        setApiError(null)
+        const incidentResponse = await fetch(
+        'http://127.0.0.1:8000/api/v1/incidents'
+      )
+
+      if (!incidentResponse.ok) {
+        throw new Error(`Incident API returned ${incidentResponse.status}`)
+      }
+
+      const incidentData = await incidentResponse.json()
+
+      setIncidentHistory(incidentData.incidents)
+      setApiError(null)
       } catch (error) {
         setApiError(error.message)
       }
@@ -266,7 +409,7 @@ function App() {
 
         <div className="status">
           <span className="status-dot"></span>
-          Week 1 Prototype
+          Production Prototype
         </div>
       </header>
 
@@ -303,7 +446,7 @@ function App() {
 
           <StatusCard
             title="Automated Tests"
-            value="11 / 11"
+            value="58 / 58"
             status="PASSED"
           />
           <StatusCard
@@ -334,6 +477,11 @@ function App() {
           />
           
         </div>
+        <IncidentCard
+          incident={remediationStatus?.incident}
+        />
+
+        <IncidentHistory incidents={incidentHistory} />
 
         <div className="legend">
           <span>
