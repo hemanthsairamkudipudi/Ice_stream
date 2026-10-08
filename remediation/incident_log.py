@@ -81,6 +81,24 @@ class IncidentLog:
 
         return incidents
 
+    def get_active_incident(self) -> dict[str, Any] | None:
+        """Return the most recent unresolved incident, if one exists."""
+        incidents = self.read_incidents()
+
+        for incident in reversed(incidents):
+            if incident.get("state") == "OPEN" and incident.get("resolved_at") is None:
+                return incident
+
+        return None
+
+    def get_recent_incidents(self, limit: int = 10) -> list[dict[str, Any]]:
+        """Return the most recent incidents, newest first."""
+        if limit <= 0:
+            raise ValueError("limit must be greater than 0")
+
+        incidents = self.read_incidents()
+        return list(reversed(incidents[-limit:]))
+
     def _rewrite(self, incidents: list[dict[str, Any]]) -> None:
         with self.path.open("w", encoding="utf-8") as file:
             for incident in incidents:

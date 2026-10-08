@@ -322,3 +322,38 @@ def test_failed_recovery_keeps_incident_open(tmp_path):
     assert incident["state"] == "OPEN"
     assert incident["resolved_at"] is None
     assert incident["action"] == "CIRCUIT_OPENED + QUARANTINE"
+
+def test_repeated_open_batches_reuse_same_incident(tmp_path):
+    incident_path = tmp_path / "incidents.jsonl"
+
+    service = RemediationService(
+        error_rate_threshold=0.02,
+        dlq_path=str(tmp_path / "dlq.jsonl"),
+        use_iceberg_dlq=False,
+        incident_log_path=str(incident_path),
+    )
+
+    records = [
+        {"order_id": "ORDER-1", "amount": -10},
+        {"order_id": "ORDER-2", "amount": 100},
+    ]
+
+    record_errors = {
+        0: ["amount must be >= 0"],
+    }
+
+    first_result = service.process_batch(records, record_errors)
+
+    second_result = service.process_batch(records, record_errors)
+
+    assert first_result["state"] == "OPEN"
+    assert second_result["state"] == "OPEN"
+
+    assert first_result["incident"]["incident_id"] == (
+        second_result["incident"]["incident_id"]
+    )
+
+    incidents = service.incident_log.read_incidents()
+
+    assert len(incidents) == 1
+    assert incidents[0]["state"] == "OPEN"

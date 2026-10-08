@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-
+from remediation.incident_log import IncidentLog
 from api.app import app
 
 
@@ -94,3 +94,35 @@ def test_remediation_status_includes_incident_information(
     assert data["incident"]["action"] == (
         "CIRCUIT_OPENED + QUARANTINE"
     )
+
+def test_incident_history_endpoint(monkeypatch, tmp_path):
+    incident_path = tmp_path / "incidents.jsonl"
+
+    incident_log = IncidentLog(path=str(incident_path))
+
+    incident_log.record_incident(
+        state="OPEN",
+        total_records=100,
+        failed_records=5,
+        error_rate=0.05,
+        threshold=0.02,
+        quarantined_records=5,
+        failure_reasons=["amount must be >= 0"],
+        action="CIRCUIT_OPENED + QUARANTINE",
+    )
+
+    monkeypatch.setattr(
+        "api.app.IncidentLog",
+        lambda: IncidentLog(path=str(incident_path)),
+    )
+
+    response = client.get("/api/v1/incidents")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["count"] == 1
+    assert len(data["incidents"]) == 1
+    assert data["incidents"][0]["state"] == "OPEN"
+    assert data["incidents"][0]["action"] == "CIRCUIT_OPENED + QUARANTINE"

@@ -75,3 +75,35 @@ def test_record_resolution_unknown_incident(tmp_path):
     )
 
     assert result is None
+
+def test_get_recent_incidents_returns_newest_first(tmp_path):
+    incident_path = tmp_path / "incidents.jsonl"
+    log = IncidentLog(path=str(incident_path))
+
+    first = log.record_incident(
+        state="OPEN",
+        total_records=100,
+        failed_records=5,
+        error_rate=0.05,
+        threshold=0.02,
+        quarantined_records=5,
+        failure_reasons=["amount must be >= 0"],
+        action="CIRCUIT_OPENED + QUARANTINE",
+    )
+
+    second = log.record_incident(
+        state="OPEN",
+        total_records=200,
+        failed_records=10,
+        error_rate=0.05,
+        threshold=0.02,
+        quarantined_records=10,
+        failure_reasons=["tax_amount must not be null"],
+        action="CIRCUIT_OPENED + QUARANTINE",
+    )
+
+    incidents = log.get_recent_incidents()
+
+    assert len(incidents) == 2
+    assert incidents[0]["incident_id"] == second["incident_id"]
+    assert incidents[1]["incident_id"] == first["incident_id"]
