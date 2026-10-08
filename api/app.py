@@ -65,6 +65,7 @@ def remediation_status() -> dict:
             "failed_records": result["failed_records"],
             "error_rate": result["error_rate"],
             "quarantined_records": result["quarantined_records"],
+            "incident": result["incident"],
         }
     )
 
