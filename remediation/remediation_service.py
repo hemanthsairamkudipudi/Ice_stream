@@ -89,7 +89,7 @@ class RemediationService:
                     failure_reasons=failure_reasons,
                     action="CIRCUIT_OPENED + QUARANTINE",
                 )
-                self.active_incident_id = incident["incident_id"]
+                self.active_incident_id = incident["incident_id"]            
         return {
             "state": state.value,
             "total_records": total_records,
