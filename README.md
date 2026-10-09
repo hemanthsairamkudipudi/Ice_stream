@@ -1195,6 +1195,6 @@ Resume
 **IceStream — Real-Time Lakehouse Observability**
 
 > Detect bad data before it breaks downstream analytics.
-```
+
 
 
